@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -15,6 +16,8 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.annotations.VisibleForTesting;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.google.android.gms.cast.Cast;
+import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.cast.MediaInfo;
 import com.google.android.gms.cast.MediaMetadata;
 import com.google.android.gms.cast.framework.CastContext;
@@ -25,8 +28,13 @@ import com.google.android.gms.cast.framework.SessionManagerListener;
 import com.google.android.gms.cast.framework.media.RemoteMediaClient;
 import com.google.android.gms.common.images.WebImage;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+interface Emitter {
+    void emit(String namespace, String message);
+}
 
 public class GoogleCastModule
         extends ReactContextBaseJavaModule implements LifecycleEventListener {
@@ -48,8 +56,12 @@ public class GoogleCastModule
     protected static final String MEDIA_PLAYBACK_STARTED= "GoogleCast:MediaPlaybackStarted";
     protected static final String MEDIA_PLAYBACK_ENDED = "GoogleCast:MediaPlaybackEnded";
 
+    protected static final String CHANNEL_MESSAGE_RECEIVED = "GoogleCast:CHANNEL_MESSAGE_RECEIVED";
+
     private CastSession mCastSession;
     private SessionManagerListener<CastSession> mSessionManagerListener;
+    private CustomChannel mCustomChannel;
+
 
     public GoogleCastModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -78,6 +90,8 @@ public class GoogleCastModule
         constants.put("MEDIA_STATUS_UPDATED", MEDIA_STATUS_UPDATED);
         constants.put("MEDIA_PLAYBACK_STARTED", MEDIA_PLAYBACK_STARTED);
         constants.put("MEDIA_PLAYBACK_ENDED", MEDIA_PLAYBACK_ENDED);
+
+        constants.put("CHANNEL_MESSAGE_RECEIVED", CHANNEL_MESSAGE_RECEIVED);
 
         return constants;
     }
@@ -221,6 +235,48 @@ public class GoogleCastModule
     }
 
     @ReactMethod
+    public void sendMessage(final String message, final String namespace){
+        getReactApplicationContext().runOnUiQueueThread(new Runnable() {
+            @Override
+            public void run() {
+                SessionManager sessionManager = CastContext.getSharedInstance(getReactApplicationContext()).getSessionManager();
+                Log.d("GoogleCast", "Attempt to send message: " + message + " on channel: " + namespace);
+                sessionManager.getCurrentCastSession().sendMessage(namespace, message);
+            }
+        });
+    }
+
+    @ReactMethod
+    public void initChannel(final String namespace) {
+        getReactApplicationContext().runOnUiQueueThread(new Runnable() {
+            @Override
+            public void run() {
+                SessionManager sessionManager = CastContext.getSharedInstance(getReactApplicationContext()).getSessionManager();
+                CastSession session = sessionManager.getCurrentCastSession();
+
+
+                mCustomChannel = new CustomChannel(namespace, new Emitter() {
+                    @Override
+                    public void emit(String namespace, String message) {
+                        Log.d("GoogleCast", "message received: " + message + " on channel: "+ namespace);
+                        WritableMap params = Arguments.createMap();
+                        params.putString("channel", namespace);
+                        params.putString("message", message);
+                        emitMessageToRN(CHANNEL_MESSAGE_RECEIVED, params);
+                    }
+                });
+
+                try {
+                    session.setMessageReceivedCallbacks(mCustomChannel.getNamespace(), mCustomChannel);
+                } catch (IOException e) {
+                    Log.d("GoogleCast", "Error starting message channel", e);
+                    mCustomChannel = null;
+                }
+            }
+        });
+    }
+
+    @ReactMethod
     public void launchExpandedControls() {
         ReactApplicationContext context = getReactApplicationContext();
         Intent intent = new Intent(context, GoogleCastExpandedControlsActivity.class);
@@ -269,5 +325,33 @@ public class GoogleCastModule
 
     protected void runOnUiQueueThread(Runnable runnable) {
         getReactApplicationContext().runOnUiQueueThread(runnable);
+    }
+
+    /**
+     * Custom message channel
+     */
+    static class CustomChannel implements Cast.MessageReceivedCallback {
+
+        private final String mNamespace;
+        private final Emitter mEmitter;
+
+        CustomChannel(String namespace, Emitter emitter) {
+            mNamespace = namespace;
+            mEmitter = emitter;
+        }
+
+
+        public String getNamespace() {
+            return mNamespace;
+        }
+
+        /*
+         * Receive message from the receiver app
+         */
+        @Override
+        public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
+            mEmitter.emit(namespace, message);
+        }
+
     }
 }
