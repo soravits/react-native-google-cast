@@ -227,8 +227,9 @@ RCT_EXPORT_METHOD(seek : (int)playPosition) {
 -(void)sessionManager:(GCKSessionManager *)sessionManager didStartCastSession:(GCKCastSession *)session {
   castSession = session;
   [session.remoteMediaClient addListener:self];
-  [self sendEventWithName:SESSION_STARTED body:@{}];
+  [self sendEventWithName:SESSION_STARTED body:@{@"friendlyName": session.device.friendlyName}];
 }
+
 
 -(void)sessionManager:(GCKSessionManager *)sessionManager didFailToStartCastSession:(GCKCastSession *)session withError:(NSError *)error {
   [self sendEventWithName:SESSION_START_FAILED
