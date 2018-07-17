@@ -336,14 +336,13 @@ public class GoogleCastModule
         getReactApplicationContext().runOnUiQueueThread(runnable);
     }
 
-<<<<<<< HEAD
     public static void initializeCast(Context context){
         try {
             CastContext.getSharedInstance(context);
         } catch(Exception e) {
             isCastAvailable = false;
         }
-=======
+    }
     /**
      * Custom message channel
      */
@@ -370,6 +369,5 @@ public class GoogleCastModule
             mEmitter.emit(namespace, message);
         }
 
->>>>>>> c5fcbd7f1913f98cdbc9465f4f9de50e7ea8ea86
     }
 }
