@@ -6,6 +6,7 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.GoogleCastActivity;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -27,6 +28,7 @@ import com.google.android.gms.cast.framework.SessionManager;
 import com.google.android.gms.cast.framework.SessionManagerListener;
 import com.google.android.gms.cast.framework.media.RemoteMediaClient;
 import com.google.android.gms.common.images.WebImage;
+import android.content.Context;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -62,11 +64,18 @@ public class GoogleCastModule
     private SessionManagerListener<CastSession> mSessionManagerListener;
     private CustomChannel mCustomChannel;
 
+    /*
+    'isCastAvailable' is volatile because 'initializeCast' is called on the main thread, but
+    react-native modules may be initialized on any thread.
+    */
+    private static volatile boolean isCastAvailable = true;
 
     public GoogleCastModule(ReactApplicationContext reactContext) {
         super(reactContext);
-        reactContext.addLifecycleEventListener(this);
-        setupCastListener();
+        if (isCastAvailable) {
+            reactContext.addLifecycleEventListener(this);
+            setupCastListener();
+        }
     }
 
     @Override
@@ -91,7 +100,7 @@ public class GoogleCastModule
         constants.put("MEDIA_PLAYBACK_STARTED", MEDIA_PLAYBACK_STARTED);
         constants.put("MEDIA_PLAYBACK_ENDED", MEDIA_PLAYBACK_ENDED);
 
-        constants.put("CHANNEL_MESSAGE_RECEIVED", CHANNEL_MESSAGE_RECEIVED);
+        constants.put("CAST_AVAILABLE", isCastAvailable);
 
         return constants;
     }
@@ -327,31 +336,11 @@ public class GoogleCastModule
         getReactApplicationContext().runOnUiQueueThread(runnable);
     }
 
-    /**
-     * Custom message channel
-     */
-    static class CustomChannel implements Cast.MessageReceivedCallback {
-
-        private final String mNamespace;
-        private final Emitter mEmitter;
-
-        CustomChannel(String namespace, Emitter emitter) {
-            mNamespace = namespace;
-            mEmitter = emitter;
+    public static void initializeCast(Context context){
+        try {
+            CastContext.getSharedInstance(context);
+        } catch(Exception e) {
+            isCastAvailable = false;
         }
-
-
-        public String getNamespace() {
-            return mNamespace;
-        }
-
-        /*
-         * Receive message from the receiver app
-         */
-        @Override
-        public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
-            mEmitter.emit(namespace, message);
-        }
-
     }
 }

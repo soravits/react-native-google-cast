@@ -21,6 +21,9 @@ RCT_EXPORT_MODULE();
 - (instancetype)init {
   self = [super init];
   channels = [[NSMutableDictionary alloc] init];
+  if(GCKCastContext.sharedInstance.sessionManager.currentCastSession){
+    castSession = GCKCastContext.sharedInstance.sessionManager.currentCastSession;
+  }
   return self;
 }
 
@@ -41,7 +44,9 @@ RCT_EXPORT_MODULE();
 
     @"CHANNEL_CONNECTED" : CHANNEL_CONNECTED,
     @"CHANNEL_MESSAGE_RECEIVED" : CHANNEL_MESSAGE_RECEIVED,
-    @"CHANNEL_DISCONNECTED" : CHANNEL_DISCONNECTED
+    @"CHANNEL_DISCONNECTED" : CHANNEL_DISCONNECTED,
+
+    @"CAST_AVAILABLE" : @YES
   };
 }
 
