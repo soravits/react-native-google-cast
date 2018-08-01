@@ -65,6 +65,12 @@ public class GoogleCastModule
     private SessionManagerListener<CastSession> mSessionManagerListener;
     private CustomChannel mCustomChannel;
 
+    /*
+    'isCastAvailable' is volatile because 'initializeCast' is called on the main thread, but
+    react-native modules may be initialized on any thread.
+    */
+    private static volatile boolean isCastAvailable = true;
+
 
     public GoogleCastModule(ReactApplicationContext reactContext) {
         super(reactContext);
