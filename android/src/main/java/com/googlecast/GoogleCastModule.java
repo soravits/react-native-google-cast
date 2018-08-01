@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.GoogleCastActivity;
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -64,11 +65,6 @@ public class GoogleCastModule
     private SessionManagerListener<CastSession> mSessionManagerListener;
     private CustomChannel mCustomChannel;
 
-    /*
-    'isCastAvailable' is volatile because 'initializeCast' is called on the main thread, but
-    react-native modules may be initialized on any thread.
-    */
-    private static volatile boolean isCastAvailable = true;
 
     public GoogleCastModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -101,6 +97,8 @@ public class GoogleCastModule
         constants.put("MEDIA_PLAYBACK_ENDED", MEDIA_PLAYBACK_ENDED);
 
         constants.put("CAST_AVAILABLE", isCastAvailable);
+
+        constants.put("CHANNEL_MESSAGE_RECEIVED", CHANNEL_MESSAGE_RECEIVED);
 
         return constants;
     }
@@ -342,5 +340,33 @@ public class GoogleCastModule
         } catch(Exception e) {
             isCastAvailable = false;
         }
+    }
+
+    /**
+     * Custom message channel
+     */
+    static class CustomChannel implements Cast.MessageReceivedCallback {
+
+        private final String mNamespace;
+        private final Emitter mEmitter;
+
+        CustomChannel(String namespace, Emitter emitter) {
+            mNamespace = namespace;
+            mEmitter = emitter;
+        }
+
+
+        public String getNamespace() {
+            return mNamespace;
+        }
+
+        /*
+         * Receive message from the receiver app
+         */
+        @Override
+        public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
+            mEmitter.emit(namespace, message);
+        }
+
     }
 }
