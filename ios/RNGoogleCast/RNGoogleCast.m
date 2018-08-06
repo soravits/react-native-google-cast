@@ -148,6 +148,7 @@ RCT_EXPORT_METHOD(castMedia: (NSDictionary *)params
   NSString *posterUrl = [RCTConvert NSString:params[@"posterUrl"]];
   double streamDuration = [RCTConvert double:params[@"streamDuration"]];
   double playPosition = [RCTConvert double:params[@"playPosition"]];
+  NSDictionary *customData = [RCTConvert NSDictionary:params[@"customData"]];
 
   playPosition = !playPosition ? 0 : playPosition;
 
@@ -183,7 +184,7 @@ RCT_EXPORT_METHOD(castMedia: (NSDictionary *)params
                                       streamDuration:streamDuration
                                          mediaTracks:nil
                                       textTrackStyle:nil
-                                          customData:nil];
+                                          customData:customData];
 
   // Cast the video.
   if (castSession) {

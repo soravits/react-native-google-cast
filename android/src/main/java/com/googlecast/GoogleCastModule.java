@@ -138,7 +138,23 @@ public class GoogleCastModule
                     seconds = 0;
                 }
 
-                remoteMediaClient.load(buildMediaInfo(params), true, seconds * 1000);
+                Map<String, Object> customData = null;
+                JSONObject convertedCustomData = new JSONObject();
+                if (params.hasKey("customData")) {
+                    customData = (params.getMap("customData")).toHashMap();
+                    Iterator it = customData.entrySet().iterator();
+                    while (it.hasNext()) {
+                        Map.Entry<String, Object> pair = (Map.Entry<String, Object>)it.next();
+                        try {
+                            convertedCustomData.put(pair.getKey(), pair.getValue());
+                        } catch (JSONException e) {
+                            Log.d("Google Cast", "Could not add key-value pair to JSON");
+                        }
+                        it.remove();
+                    }
+                }
+
+                remoteMediaClient.load(buildMediaInfo(params), true, seconds * 1000, convertedCustomData);
 
                 Log.e(REACT_CLASS, "Casting media... ");
             }
